@@ -53,21 +53,21 @@ namespace FlexileEngine.engine.Renderer
             // Allocate space for vertices
             vboID = GL.GenBuffer();
             GL.BindBuffer(BufferTarget.ArrayBuffer, vboID);
-            GL.BufferData(BufferTarget.ArrayBuffer, VERTEX_SIZE * sizeof(float), vertices, BufferUsageHint.DynamicDraw);
+            GL.BufferData(BufferTarget.ArrayBuffer, vertices.Length * sizeof(float), vertices, BufferUsageHint.DynamicDraw);
 
             // Create and upload Indices buffer
             int eboID = GL.GenBuffer();
             int[] indices = GenIndices();
-            GL.BindBuffer(BufferTarget.ArrayBuffer, eboID);
-            GL.BufferData(BufferTarget.ElementArrayBuffer, indices.Length * sizeof(uint), indices, BufferUsageHint.StaticDraw);
+            GL.BindBuffer(BufferTarget.ElementArrayBuffer, eboID);
+            GL.BufferData(BufferTarget.ElementArrayBuffer, indices.Length * sizeof(float), indices, BufferUsageHint.StaticDraw);
 
-            var vertexLocation = Shader.GetAttribLocation("aPosition");
+            var vertexLocation = Shader.GetAttribLocation("aPos");
             GL.VertexAttribPointer(vertexLocation, POS_SIZE, VertexAttribPointerType.Float, false, VERTEX_SIZE_BYTES, POS_OFFSET);
             GL.EnableVertexAttribArray(vertexLocation);
 
             var colorLocation = Shader.GetAttribLocation("aColor");
-            GL.EnableVertexAttribArray(colorLocation);
             GL.VertexAttribPointer(colorLocation, COLOR_SIZE, VertexAttribPointerType.Float, false, VERTEX_SIZE_BYTES, COLOR_OFFSET);
+            GL.EnableVertexAttribArray(colorLocation);
         }
 
         public void AddSprite(Sprite2D spr)
@@ -85,11 +85,6 @@ namespace FlexileEngine.engine.Renderer
             {
                 hasRoom = false;
             }
-
-            if (hasRoom)
-            {
-                Render();
-            }
         }
 
         public void Render()
@@ -101,18 +96,21 @@ namespace FlexileEngine.engine.Renderer
             GL.BufferSubData(BufferTarget.ArrayBuffer, (IntPtr)0, VERTEX_SIZE_BYTES, vertices);
 
             // Use shader
+            Camera Camera = window.activeScene.Camera;
             Shader.Use();
-            Shader.SetMatrix4("uProjection", window.activeScene.Camera.GetProjectionMatrix());
-            Shader.SetMatrix4("uView", window.activeScene.Camera.GetViewMatrix());
+            Shader.SetMatrix4("uProjection", Camera.GetProjectionMatrix());
+            Shader.SetMatrix4("uView", Camera.GetViewMatrix());
 
             GL.BindVertexArray(vaoID);
-            GL.EnableVertexAttribArray(0);
-            GL.EnableVertexAttribArray(1);
+            int vertexLocation = Shader.GetAttribLocation("aPos");
+            int colorLocation = Shader.GetAttribLocation("aColor");
+            GL.EnableVertexAttribArray(vertexLocation);
+            GL.EnableVertexAttribArray(colorLocation);
 
-            GL.DrawElements(BeginMode.Triangles, numSprites * 6, DrawElementsType.UnsignedInt, 0);
+            GL.DrawElements(PrimitiveType.Triangles, numSprites * 6, DrawElementsType.UnsignedInt, 0);
 
-            GL.DisableVertexAttribArray(0);
-            GL.DisableVertexAttribArray(1);
+            GL.DisableVertexAttribArray(vertexLocation);
+            GL.DisableVertexAttribArray(colorLocation);
             GL.BindVertexArray(0);
 
             Shader.Detach();
@@ -177,7 +175,7 @@ namespace FlexileEngine.engine.Renderer
                 // Load position
                 vertices[offset] = sprite.GameObject.Transform.Position.X + (xAdd * sprite.GameObject.Transform.Scale.X);
                 vertices[offset + 1] = sprite.GameObject.Transform.Position.Y+ (yAdd * sprite.GameObject.Transform.Scale.Y);
-
+                
                 // Load color
                 vertices[offset + 2] = color.X;
                 vertices[offset + 3] = color.Y;

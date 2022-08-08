@@ -16,12 +16,12 @@ namespace FlexileEngine.engine.Components
             Color = color;
         }
 
-        public override void start()
+        public override void Start()
         {
 
         }
 
-        public override void update(float delta)
+        public override void Update(float delta)
         {
             
         }

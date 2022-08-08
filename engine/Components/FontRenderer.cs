@@ -8,12 +8,12 @@ namespace FlexileEngine.engine.Components
 {
     public class FontRenderer : Component
     {
-        public override void start()
+        public override void Start()
         {
             Console.WriteLine("Font2D");
         }
 
-        public override void update(float delta)
+        public override void Update(float delta)
         {
 
         }

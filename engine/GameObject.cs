@@ -10,7 +10,7 @@ namespace FlexileEngine.engine
 {
     public class GameObject
     {
-        private string Name { get; set; }
+        public string Name { get; set; }
         private ArrayList Components { get; set; }
         public Transform Transform { get; set; }
         
@@ -61,7 +61,7 @@ namespace FlexileEngine.engine
         {
             foreach (Component c in Components)
             {
-                c.update(delta);
+                c.Update(delta);
             }
         }
 
@@ -69,7 +69,7 @@ namespace FlexileEngine.engine
         {
             foreach (Component c in Components)
             {
-                c.start();
+                c.Start();
             }
         }
     }

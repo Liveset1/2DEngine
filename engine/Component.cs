@@ -8,8 +8,8 @@ namespace FlexileEngine.engine
 {
     public abstract class Component
     {
-        public GameObject? GameObject { get; set; } = null;
-        public abstract void update(float delta);
-        public abstract void start();
+        public GameObject GameObject { get; set; }
+        public abstract void Update(float delta);
+        public abstract void Start();
     }
 }
