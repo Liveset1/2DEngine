@@ -178,7 +178,10 @@ namespace FlexileEngine.engine.Renderer
         public void SetMatrix4(string name, Matrix4 data)
         {
             GL.UseProgram(Handle);
-            GL.UniformMatrix4(_uniformLocations[name], true, ref data);
+            // NOTE: Don't transpose this :)
+            // That will alter the view matrix very strangely and it took me
+            // awhile to figure out what was wrong here haha
+            GL.UniformMatrix4(_uniformLocations[name], false, ref data);
         }
 
         /// <summary>

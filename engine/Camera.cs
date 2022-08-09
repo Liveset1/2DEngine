@@ -88,13 +88,25 @@ namespace FlexileEngine.engine
         // Get the view matrix using the amazing LookAt function described more in depth on the web tutorials
         public Matrix4 GetViewMatrix()
         {
-            return Matrix4.LookAt(Position, Position + _front, _up);
+            // return Matrix4.LookAt(Position, Position + _front, _up);
+
+            // NOTE: I'm hard coding a 2D style look at function here
+            return Matrix4.LookAt(
+                new Vector3(Position.X, Position.Y, 20.0f), 
+                new Vector3(Position.X, Position.Y, 0.0f), 
+                new Vector3(0, 1, 0));
         }
 
         // Get the projection matrix using the same method we have used up until this point
         public Matrix4 GetProjectionMatrix()
         {
-            return Matrix4.CreatePerspectiveFieldOfView(_fov, AspectRatio, 0.01f, 100f);
+            // NOTE: This is a 3D projection matrix. You would have to do a lot of fiddling to get 
+            // this to display the appropriate view to see your quads. You may also have to change
+            // some rendering techniques.
+            //return Matrix4.CreatePerspectiveFieldOfView(_fov, AspectRatio, 0.01f, 100f);
+
+            // This is a 2D projection matrix (Ortho)
+            return Matrix4.CreateOrthographic(1920.0f, 1080.0f, 0.01f, 100.0f);
         }
 
         // This function is going to update the direction vertices using some of the math learned in the web tutorials.

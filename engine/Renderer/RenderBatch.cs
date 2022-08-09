@@ -4,6 +4,7 @@ using OpenTK.Mathematics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -14,17 +15,40 @@ namespace FlexileEngine.engine.Renderer
         private const string VertexPath = "../../../assets/Shaders/DefaultVS.glsl";
         private const string FragmentPath = "../../../assets/Shaders/DefaultFS.glsl";
 
-        private const int POS_SIZE = 2;
-        private const int COLOR_SIZE = 4;
-        private const int POS_OFFSET = 0;
-        private const int COLOR_OFFSET = POS_OFFSET + POS_SIZE * sizeof(float);
-        private const int VERTEX_SIZE = 6;
-        private const int VERTEX_SIZE_BYTES = VERTEX_SIZE * sizeof(float);
+        // NOTE: Important that this is 3. Your vertex shader has:
+        //   layout(location = 0) in vec*3*
+        // So this needs to match
+        // Additionally, C# provides sizeof() operator, so no need to do this hack which
+        // I had to do in Java. See below for better ways to do this stuff
+        // private const int POS_SIZE = 3;
+        // private const int COLOR_SIZE = 4;
+        // private const int POS_OFFSET = 0;
+        // private const int COLOR_OFFSET = POS_OFFSET + POS_SIZE * sizeof(float);
+        // private const int VERTEX_SIZE = 6;
+        // private const int VERTEX_SIZE_BYTES = VERTEX_SIZE * sizeof(float);
+        private const int numVertsPerQuad = 4;
+        private const int numElementsPerQuad = 6;
+
+        // Use structs in C#. It simplifies a lot of stuff
+        // You do have to be a bit careful with sizes and stuff though
+        // So we tell the compiler to lay out the members sequentially in memory and
+        // to tightly pack it. That way, the binary will look something like
+        // {
+        //   float[3]
+        //   float[4]
+        // }
+        [StructLayout(LayoutKind.Sequential, Pack = 1)]
+        struct QuadVertex
+        {
+            public Vector3 Position;
+            public Vector4 Color;
+        }
 
         private Sprite2D[] sprites;
         private int numSprites;
         public bool hasRoom { get; set; }
-        private float[] vertices;
+        // Swapping this to struct to get type safety not available in Java
+        private QuadVertex[] vertices;
 
         private int vaoID, vboID;
         private int maxBatchSize;
@@ -37,8 +61,7 @@ namespace FlexileEngine.engine.Renderer
             sprites = new Sprite2D[maxBatchSize];
             this.maxBatchSize = maxBatchSize;
 
-            // 4 vertices quads
-            vertices = new float[maxBatchSize * 4 *  VERTEX_SIZE];
+            vertices = new QuadVertex[maxBatchSize * numVertsPerQuad];
 
             numSprites = 0;
             hasRoom = true;
@@ -53,20 +76,44 @@ namespace FlexileEngine.engine.Renderer
             // Allocate space for vertices
             vboID = GL.GenBuffer();
             GL.BindBuffer(BufferTarget.ArrayBuffer, vboID);
-            GL.BufferData(BufferTarget.ArrayBuffer, vertices.Length * sizeof(float), vertices, BufferUsageHint.DynamicDraw);
+            // NOTE: Use sizeof here to be type safe
+            GL.BufferData(BufferTarget.ArrayBuffer, vertices.Length * Marshal.SizeOf<QuadVertex>(), vertices, BufferUsageHint.DynamicDraw);
 
             // Create and upload Indices buffer
             int eboID = GL.GenBuffer();
-            int[] indices = GenIndices();
+            UInt32[] indices = GenIndices();
             GL.BindBuffer(BufferTarget.ElementArrayBuffer, eboID);
-            GL.BufferData(BufferTarget.ElementArrayBuffer, indices.Length * sizeof(float), indices, BufferUsageHint.StaticDraw);
+            // NOTE: These are uint32 not floats
+            GL.BufferData(BufferTarget.ElementArrayBuffer, indices.Length * sizeof(UInt32), indices, BufferUsageHint.StaticDraw);
 
             var vertexLocation = Shader.GetAttribLocation("aPos");
-            GL.VertexAttribPointer(vertexLocation, POS_SIZE, VertexAttribPointerType.Float, false, VERTEX_SIZE_BYTES, POS_OFFSET);
+            GL.VertexAttribPointer(
+                vertexLocation, 
+                // NOTE: Vertex position has 3 components x, y, z
+                3, 
+                VertexAttribPointerType.Float, 
+                false,
+                // NOTE: Using sizeof here means you don't have to manually calculate it
+                Marshal.SizeOf<QuadVertex>(), 
+                // NOTE: This gets the variable name of QuadVertex.Position to avoid typos
+                // So it will return "Position" as a string
+                // Using offsetof here will also prevent typos in the number of bytes to offset this data member
+                Marshal.OffsetOf<QuadVertex>(nameof(QuadVertex.Position))
+            );
             GL.EnableVertexAttribArray(vertexLocation);
 
             var colorLocation = Shader.GetAttribLocation("aColor");
-            GL.VertexAttribPointer(colorLocation, COLOR_SIZE, VertexAttribPointerType.Float, false, VERTEX_SIZE_BYTES, COLOR_OFFSET);
+            GL.VertexAttribPointer(
+                colorLocation,
+                // NOTE: 4 Components: r, g, b, a
+                4,
+                VertexAttribPointerType.Float,
+                false,
+                // NOTE: Same as above
+                Marshal.SizeOf<QuadVertex>(),
+                // NOTE: Same as above
+                Marshal.OffsetOf<QuadVertex>(nameof(QuadVertex.Color))
+            );
             GL.EnableVertexAttribArray(colorLocation);
         }
 
@@ -93,7 +140,8 @@ namespace FlexileEngine.engine.Renderer
 
             // For now, we will rebuffer all data every frame
             GL.BindBuffer(BufferTarget.ArrayBuffer, vboID);
-            GL.BufferSubData(BufferTarget.ArrayBuffer, (IntPtr)0, VERTEX_SIZE_BYTES, vertices);
+            // NOTE: No typos here when using sizeof
+            GL.BufferSubData(BufferTarget.ArrayBuffer, (IntPtr)0, Marshal.SizeOf<QuadVertex>() * numSprites * numVertsPerQuad, vertices);
 
             // Use shader
             Camera Camera = window.activeScene.Camera;
@@ -101,37 +149,42 @@ namespace FlexileEngine.engine.Renderer
             Shader.SetMatrix4("uProjection", Camera.GetProjectionMatrix());
             Shader.SetMatrix4("uView", Camera.GetViewMatrix());
 
+            // NOTE: This is bad for performance and unecessary which I didn't know when I made this tutorial
+            //
+            // int vertexLocation = Shader.GetAttribLocation("aPos");
+            // int colorLocation = Shader.GetAttribLocation("aColor");
+            // GL.EnableVertexAttribArray(vertexLocation);
+            // GL.EnableVertexAttribArray(colorLocation);
+
             GL.BindVertexArray(vaoID);
-            int vertexLocation = Shader.GetAttribLocation("aPos");
-            int colorLocation = Shader.GetAttribLocation("aColor");
-            GL.EnableVertexAttribArray(vertexLocation);
-            GL.EnableVertexAttribArray(colorLocation);
+            GL.DrawElements(PrimitiveType.Triangles, numSprites * numElementsPerQuad, DrawElementsType.UnsignedInt, 0);
 
-            GL.DrawElements(PrimitiveType.Triangles, numSprites * 6, DrawElementsType.UnsignedInt, 0);
-
-            GL.DisableVertexAttribArray(vertexLocation);
-            GL.DisableVertexAttribArray(colorLocation);
-            GL.BindVertexArray(0);
-
-            Shader.Detach();
+            // NOTE: This is bad for performance which I didn't know at the time of making this tutorial
+            // 
+            // GL.DisableVertexAttribArray(vertexLocation);
+            // GL.DisableVertexAttribArray(colorLocation);
+            // GL.BindVertexArray(0);
+            // Shader.Detach();
         }
 
-
-        private int[] GenIndices()
+        // NOTE: Better to be explicit here since in C# you can define
+        // the exact type of integer
+        private UInt32[] GenIndices()
         {
             // 6 indices per quad (3 per triangle)
-            int[] elements = new int[6 * maxBatchSize];
-            for(int i = 0; i < maxBatchSize; i++) {
+            var elements = new UInt32[maxBatchSize * numElementsPerQuad];
+            for (UInt32 i = 0; i < maxBatchSize; i++)
+            {
                 LoadElementIndices(elements, i);
             }
 
             return elements;
         }
 
-        private void LoadElementIndices(int[] elements, int index)
+        private void LoadElementIndices(UInt32[] elements, UInt32 index)
         {
-            int offsetArrayIndex = 6 * index;
-            int offset = 4 * index;
+            UInt32 offsetArrayIndex = numElementsPerQuad * index;
+            UInt32 offset = numVertsPerQuad * index;
 
             // 3, 2, 0, 0, 2, 1        7, 6, 4, 4, 6, 5
             // Triangle 1
@@ -150,7 +203,7 @@ namespace FlexileEngine.engine.Renderer
             Sprite2D sprite = this.sprites[index];
 
             // Find offset within array (4 vertices per sprite)
-            int offset = index * 4 * VERTEX_SIZE;
+            int offset = index * numVertsPerQuad;
 
             Vector4 color = sprite.Color;
 
@@ -173,16 +226,12 @@ namespace FlexileEngine.engine.Renderer
                 }
 
                 // Load position
-                vertices[offset] = sprite.GameObject.Transform.Position.X + (xAdd * sprite.GameObject.Transform.Scale.X);
-                vertices[offset + 1] = sprite.GameObject.Transform.Position.Y+ (yAdd * sprite.GameObject.Transform.Scale.Y);
-                
-                // Load color
-                vertices[offset + 2] = color.X;
-                vertices[offset + 3] = color.Y;
-                vertices[offset + 4] = color.Z;
-                vertices[offset + 5] = color.W;
+                // NOTE: Since we're using structs, you can use type safety
+                vertices[offset + i].Position.X = sprite.GameObject.Transform.Position.X + (xAdd * sprite.GameObject.Transform.Scale.X);
+                vertices[offset + i].Position.Y = sprite.GameObject.Transform.Position.Y + (yAdd * sprite.GameObject.Transform.Scale.Y);
 
-                offset += VERTEX_SIZE;
+                // Load color
+                vertices[offset + i].Color = color;
             }
         }
     }

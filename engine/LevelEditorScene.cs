@@ -48,10 +48,12 @@ namespace FlexileEngine.engine
         private bool _clicked = false;
         public override void Update(FrameEventArgs e, float dt)
         {
-            if (!Window.IsFocused) // Check to see if the window is focused
-            {
-                return;
-            }
+            // NOTE: Not sure why you want to skip updating and rendering if the window is focused
+            // it prevented me from screenshotting the app :)
+            //if (!Window.IsFocused) // Check to see if the window is focused
+            //{
+            //    return;
+            //}
 
             var input = Window.KeyboardState;
 
@@ -60,34 +62,36 @@ namespace FlexileEngine.engine
                 Window.Close();
             }
 
-            const float cameraSpeed = 1.5f;
+            const float cameraSpeed = 100.5f;
             const float sensitivity = 0.2f;
 
+            Vector3 right = new Vector3(1, 0, 0);
+            Vector3 up = new Vector3(0, 1, 0);
             if (input.IsKeyDown(Keys.W))
             {
-                Camera.Position += Camera.Front * cameraSpeed * (float)e.Time; // Forward
+                Camera.Position += up * cameraSpeed * (float)e.Time; // Forward
             }
 
             if (input.IsKeyDown(Keys.S))
             {
-                Camera.Position -= Camera.Front * cameraSpeed * (float)e.Time; // Backwards
+                Camera.Position -= up * cameraSpeed * (float)e.Time; // Backwards
             }
             if (input.IsKeyDown(Keys.A))
             {
-                Camera.Position -= Camera.Right * cameraSpeed * (float)e.Time; // Left
+                Camera.Position -= right * cameraSpeed * (float)e.Time; // Left
             }
             if (input.IsKeyDown(Keys.D))
             {
-                Camera.Position += Camera.Right * cameraSpeed * (float)e.Time; // Right
+                Camera.Position += right * cameraSpeed * (float)e.Time; // Right
             }
-            if (input.IsKeyDown(Keys.E))
-            {
-                Camera.Position += Camera.Up * cameraSpeed * (float)e.Time; // Up
-            }
-            if (input.IsKeyDown(Keys.Q))
-            {
-                Camera.Position -= Camera.Up * cameraSpeed * (float)e.Time; // Down
-            }
+            // if (input.IsKeyDown(Keys.E))
+            // {
+            //     Camera.Position += Camera.Up * cameraSpeed * (float)e.Time; // Up
+            // }
+            // if (input.IsKeyDown(Keys.Q))
+            // {
+            //     Camera.Position -= Camera.Up * cameraSpeed * (float)e.Time; // Down
+            // }
 
             // Get the mouse state
             var mouse = Window.MouseState;
