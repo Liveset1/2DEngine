@@ -10,7 +10,6 @@ GameWindowSettings gameWindowSettings = new GameWindowSettings();
 NativeWindowSettings nativeWindowSettings = new NativeWindowSettings();
 
 // GameWindowSettings
-gameWindowSettings = new GameWindowSettings();
 gameWindowSettings.UpdateFrequency = 60.0;
 gameWindowSettings.RenderFrequency = 60.0;
 
@@ -22,6 +21,7 @@ nativeWindowSettings.StartVisible = true;
 nativeWindowSettings.MinimumSize = new Vector2i(Width, Height);
 nativeWindowSettings.Size = new Vector2i(Width, Height);
 nativeWindowSettings.Title = "Flexile Engine";
+nativeWindowSettings.IsEventDriven = false;
 
 Window window = Window.get(gameWindowSettings, nativeWindowSettings);
 
